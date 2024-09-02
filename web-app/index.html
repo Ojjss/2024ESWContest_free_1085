@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracker</title>
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        #date-select, #time-buttons {
+            margin-bottom: 10px;
+        }
+        #time-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .time-button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .time-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAarSdXb_2VruPoLYmT6wHLCzoOgPUEj_M&callback=initMap" async defer></script>
+</head>
+<body>
+    <div id="controls">
+        <label for="date-select">Select Date:</label>
+        <select id="date-select"></select>
+        <div id="time-buttons">
+            <!-- 시간 버튼이 동적으로 생성됩니다 -->
+        </div>
+    </div>
+    <div id="map"></div>
+    <script>
+        let map;
+        let markers = [];
+        let allData = [];
+        let circle; // 반투명 초록 원을 저장할 변수
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: { lat: 35.8869603, lng: 128.6118876 }
+            });
+
+            // 날짜 선택 드롭다운 메뉴 채우기
+            fetch('/api/dates')
+                .then(response => response.json())
+                .then(dates => populateDateOptions(dates))
+                .then(() => {
+                    const defaultDate = document.getElementById('date-select').value;
+                    if (defaultDate) {
+                        fetchDataForDate(defaultDate);
+                    }
+                });
+
+            // WebSocket 연결 초기화
+            const ws = new WebSocket(`ws://${location.host}`);
+            ws.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                updateMap([data], true);
+            };
+        }
+
+        function populateDateOptions(dates) {
+            const select = document.getElementById('date-select');
+            dates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.text = date;
+                select.add(option);
+            });
+
+            if (dates.length > 0) {
+                select.value = dates[0];
+            }
+
+            select.addEventListener('change', () => fetchDataForDate(select.value));
+        }
+
+        function fetchDataForDate(date) {
+            fetch(`/api/sensor?date=${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    allData = data.filteredData;
+                    populateTimeButtons(data.hourlyCounts);
+                    updateMap(data.filteredData, false);
+                    drawMeanCircle(); // 평균 원 그리기
+                });
+        }
+
+        function populateTimeButtons(hourlyCounts) {
+            const buttonContainer = document.getElementById('time-buttons');
+            buttonContainer.innerHTML = '';
+
+            hourlyCounts.forEach((count, hour) => {
+                if (count > 0) {
+                    const button = document.createElement('button');
+                    button.textContent = `${hour}:00 - ${parseInt(hour) + 1}:00 (${count})`;
+                    button.className = 'time-button';
+                    button.addEventListener('click', () => {
+                        filterMarkersByHour(hour);
+                        drawMeanCircle(hour); // 선택된 시간대에 맞는 평균 원 그리기
+                    });
+                    buttonContainer.appendChild(button);
+                }
+            });
+        }
+
+        function addMarker(location, color, info, timestamp) {
+            let marker = new google.maps.Marker({
+                position: location,
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: color,
+                    fillOpacity: 0.8,
+                    strokeWeight: 0
+                }
+            });
+
+            let infoWindow = new google.maps.InfoWindow({
+                content: info
+            });
+
+            marker.addListener('click', function() {
+                infoWindow.open(map, marker);
+            });
+
+            markers.push({ marker, info, timestamp });
+        }
+
+        function updateMap(data, append) {
+            if (!append) {
+                markers.forEach(({ marker }) => marker.setMap(null));
+                markers = [];
+            }
+
+            data.forEach(entry => {
+                let color = entry.event === 'alcohol_detected' ? 'red' : 'blue';
+                let info = `<div><strong>Event:</strong> ${entry.event}</div>
+                            <div><strong>Time:</strong> ${entry.timestamp}</div>
+                            <div><strong>MAC:</strong> ${entry.mac}</div>`;
+                if (entry.latitude && entry.longitude) {
+                    addMarker({ lat: entry.latitude, lng: entry.longitude }, color, info, entry.timestamp);
+                }
+            });
+        }
+
+        function filterMarkersByHour(hour) {
+            markers.forEach(({ marker }) => marker.setMap(null)); // 모든 마커를 숨기기
+
+            markers.forEach(({ marker, timestamp }) => {
+                const markerHour = new Date(timestamp).getHours(); // 타임스탬프에서 시간 추출
+                if (markerHour === parseInt(hour)) {
+                    marker.setMap(map); // 선택된 시간대의 마커만 표시
+                }
+            });
+        }
+
+        function drawMeanCircle(hour) {
+            let latSum = 0, lngSum = 0, count = 0;
+
+            markers.forEach(({ marker, timestamp }) => {
+                const markerHour = new Date(timestamp).getHours();
+                if (hour === undefined || markerHour === parseInt(hour)) {
+                    latSum += marker.getPosition().lat();
+                    lngSum += marker.getPosition().lng();
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                const meanLat = latSum / count;
+                const meanLng = lngSum / count;
+
+                // 기존 원이 있으면 지우기
+                if (circle) {
+                    circle.setMap(null);
+                }
+
+                // 새 원 그리기
+                circle = new google.maps.Circle({
+                    strokeColor: "#008000",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: "#008000",
+                    fillOpacity: 0.35,
+                    map: map,
+                    center: { lat: meanLat, lng: meanLng },
+                    radius: 300 // 반경 300m
+                });
+            }
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
