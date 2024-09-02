@@ -12,7 +12,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 let clients = [];
-const dataFilePath = path.join(__dirname, 'sensor_data1.json');
+const dataFilePath = path.join(__dirname, 'sensor_data.json');
 
 // 데이터 파일이 존재하지 않으면 파일을 생성하고 빈 배열로 초기화
 if (!fs.existsSync(dataFilePath)) {
