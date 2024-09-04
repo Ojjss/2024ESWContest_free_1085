@@ -6,11 +6,11 @@ from RPLCD.i2c import CharLCD
 import requests
 import gpsd
 import socket
-import netifaces  # netifaces 라이브러리 추가
+import netifaces 
 
 # GPIO 설정
 GPIO.setmode(GPIO.BCM)
-RELAY_PIN = 16  # GPIO16에 연결된 릴레이 제어 핀
+RELAY_PIN = 16  # GPIO 16에 연결된 릴레이 제어 핀
 GPIO.setup(RELAY_PIN, GPIO.OUT)
 
 # ADC 설정
@@ -19,16 +19,16 @@ adc1 = Adafruit_ADS1x15.ADS1115(address=0x48, busnum=1)
 adc2 = Adafruit_ADS1x15.ADS1115(address=0x49, busnum=1)
 GAIN = 1
 
-# MQ2 센서 채널 설정
+# MQ135 센서 채널 설정
 mq135_channel = 0  # MQ135 센서를 A0에 연결
 
 # FSR408 압력 센서 채널 설정
 pressure_channels_adc1 = [0, 1, 2, 3]
 pressure_channels_adc2 = [0, 1, 2, 3]
 
-# 임계값 설정 (테스트 및 보정 필요)
-BREATH_THRESHOLD = 150  # 입김 감지 기준 (MQ2 센서)
-ALCOHOL_THRESHOLD = 150  # 음주 상태 판단 기준 (MQ2 센서)
+# 임계값 설정 
+BREATH_THRESHOLD = 150  # 입김 감지 기준 (MQ135 센서)
+ALCOHOL_THRESHOLD = 150  # 음주 상태 판단 기준 (MQ135 센서)
 NO_DETECTION_TIMEOUT = 5  # 감지되지 않으면 5초 후에 경고
 
 # 초음파 센서 설정
@@ -76,7 +76,7 @@ def get_local_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0)
-        s.connect(('10.254.254.254', 1))  # 임의의 외부 IP 주소에 연결 시도 (실제 연결되지 않음)
+        s.connect(('10.254.254.254', 1))  # 임의의 외부 IP 주소에 연결 시도 
         ip_address = s.getsockname()[0]
         return ip_address
     except Exception as e:
@@ -91,20 +91,20 @@ def get_mac_address(interface='wlan0'):
     except KeyError:
         return None
 
-# 기존 send_data 함수를 수정하여 위치 데이터를 추가로 전송
+# send_data()를 통해 서버에 데이터 전송
 def send_data(event, value):
     url = "http://127.0.0.1:8080/api/sensor"  # 서버 IP와 포트를 설정하세요
     latitude, longitude = get_gps_data()  # GPS 데이터 가져오기
     local_ip = get_local_ip()  # 라즈베리 파이의 IP 주소 가져오기
-    mac_address = get_mac_address('wlan0')  # MAC 주소 가져오기 (인터페이스 이름 변경 가능)
+    mac_address = get_mac_address('wlan0')  # MAC 주소 가져오기
     data = {
         "event": event,
         "value": value,
         "timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
         "latitude": latitude,
         "longitude": longitude,
-        "ip": local_ip,  # IP 주소를 데이터에 추가
-        "mac": mac_address  # MAC 주소 추가
+        "ip": local_ip,  
+        "mac": mac_address 
     }
     try:
         response = requests.post(url, json=data, timeout=20)  # 타임아웃 20초 설정
@@ -201,7 +201,7 @@ def monitor_distance_for_duration(duration=300):
 def main():
     setup_gps()  # GPS 설정
     try:
-        while True:
+        while True
             # 상태 변수 초기화
             state = 0
             initial_time = None
@@ -229,14 +229,14 @@ def main():
                 GPIO.output(RELAY_PIN, GPIO.LOW)  # 알코올 감지 후 출력 핀 LOW로 리셋
                 send_data('alcohol_detected', 1)
                 print("Alcohol detected, restarting detection process.")
-                continue  # 알코올 감지 후 다시 입김 감지 단계로 돌아가기
+                continue  # 알코올 감지 후 입김 감지 단계로 리셋
             
             elif detection_result == 'no_breath_detected':
                 lcd.clear()
                 lcd.write_string("Please try again")
                 GPIO.output(RELAY_PIN,GPIO.LOW)
                 print("Continuing execution after no breath detection.")
-                continue  # 바람이 감지될 때까지 계속 반복
+                continue  # 입김이 감지될 때까지 계속 반복
 
             # 초음파 및 압력 센서 측정
             while True:
@@ -275,7 +275,7 @@ def main():
                         GPIO.output(RELAY_PIN, GPIO.LOW)  # 2명 이상 탑승 시 GPIO 핀 16에 LOW 신호 출력
                         send_data('overstaffing', 1)
                         print("overstaffing")
-                        break  # 입김 감지 단계로 돌아가기 위해 현재 루프 탈출
+                        break  # 다중 탑승 감지 후 입김 감지 단계로 리셋
                     elif 0 <= current_pressure <= b + 15000:
                         # 현재 압력이 b ± 15000 범위 내에 있는 경우
                         lcd.clear()
@@ -287,7 +287,7 @@ def main():
                             lcd.write_string("Please wait. . .")
                             GPIO.output(RELAY_PIN, GPIO.LOW)
                             print("Distance maintained within range for 5 minutes, restarting breath detection.")
-                            break  # 입김 감지 단계로 돌아가기 위해 현재 루프 탈출
+                            break  # 입김 감지 단계로 리셋
 
     except KeyboardInterrupt:
         print("프로그램 종료")
