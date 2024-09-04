@@ -249,11 +249,11 @@ def main():
                             initial_time = time.time()
                             initial_state = False
 
-                        if total_distance <= 90:
+                        if total_distance <= 115:
                             if time.time() - initial_time >= 0.5:
                                 state = 1
                                 a = total_distance
-                                GPIO.output(RELAY_PIN, GPIO.HIGH)
+                                GPIO.output(RELAY_PIN, GPIO.HIGH) # 임시적으로 GPIO 핀 16에 LOW 신호 출력
                                 print(f"State = 1, a = {a:.2f}")
                         else:
                             initial_state = True
