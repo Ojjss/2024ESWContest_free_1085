@@ -193,7 +193,7 @@ def monitor_distance_for_duration(duration=15):
     while time.time() - start_time < duration:
         with lock:
             total_distance = sum(distances.values())
-            if not (105 <= total_distance <= 130):
+            if not (125 <= total_distance <= 145):
                 return False
         time.sleep(1)  # 1초 간격으로 측정
     return True
@@ -269,15 +269,15 @@ def main():
                     current_pressure = measure_pressure()
                     print(f"Pressure: {current_pressure:.2f}")
 
-                    if current_pressure >= (b + 20000):
+                    if current_pressure >= (b + 15000):
                         lcd.clear()
                         lcd.write_string("overstaffing")
                         GPIO.output(RELAY_PIN, GPIO.LOW)  # 2명 이상 탑승 시 GPIO 핀 16에 LOW 신호 출력
                         send_data('overstaffing', 1)
                         print("overstaffing")
                         break  # 입김 감지 단계로 돌아가기 위해 현재 루프 탈출
-                    elif 0 <= current_pressure <= b + 10000:
-                        # 현재 압력이 b ± 10000 범위 내에 있는 경우
+                    elif 0 <= current_pressure <= b + 15000:
+                        # 현재 압력이 b ± 15000 범위 내에 있는 경우
                         lcd.clear()
                         lcd.write_string("Lets move !")
                         GPIO.output(RELAY_PIN, GPIO.HIGH)  # GPIO 핀 16에 HIGH 신호 출력
