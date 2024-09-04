@@ -93,7 +93,7 @@ def get_mac_address(interface='wlan0'):
 
 # send_data()를 통해 서버에 데이터 전송
 def send_data(event, value):
-    url = "http://127.0.0.1:8080/api/sensor"  # 서버 IP와 포트를 설정하세요
+    url = "http://127.0.0.1:8080/api/sensor"  # 서버 IP와 포트 설정 
     latitude, longitude = get_gps_data()  # GPS 데이터 가져오기
     local_ip = get_local_ip()  # 라즈베리 파이의 IP 주소 가져오기
     mac_address = get_mac_address('wlan0')  # MAC 주소 가져오기
