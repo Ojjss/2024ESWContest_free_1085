@@ -188,7 +188,7 @@ def detect_breath_and_alcohol():
 
         time.sleep(0.1)  # 측정 간격
 
-def monitor_distance_for_duration(duration=15):
+def monitor_distance_for_duration(duration=300):
     start_time = time.time()
     while time.time() - start_time < duration:
         with lock:
@@ -258,7 +258,7 @@ def main():
                         else:
                             initial_state = True
 
-                    elif state == 1 and total_distance <= (a):
+                    elif state == 1 and total_distance <= (a-20):
                         state = 2
                         b = measure_pressure()
                         print(f"State = 2, b = {b:.2f}")
@@ -281,7 +281,7 @@ def main():
                         lcd.clear()
                         lcd.write_string("Lets move !")
                         GPIO.output(RELAY_PIN, GPIO.HIGH)  # GPIO 핀 16에 HIGH 신호 출력
-                        print("Pressure within b ± 10000 range, monitoring distance...")
+                        print("Pressure within b ± 15000 range, monitoring distance...")
                         if monitor_distance_for_duration():
                             lcd.clear()
                             lcd.write_string("Please wait. . .")
